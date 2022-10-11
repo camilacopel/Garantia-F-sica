@@ -1,0 +1,367 @@
+"""
+Refatorar
+"""
+
+# -*- coding: utf-8 -*-
+"""
+Módulo de Construção.
+
+Contém os módulos...
+"""
+from pathlib import Path
+import utils
+import builder_nw as bnw
+import logging
+import numpy as np
+
+def estudo_gsf(pasta: Path, nome: str, series_hist: bool = False):
+    """Caso Sazo."""
+    caso = bnw.BuilderNW(pasta, nome)
+    if series_hist is True:
+        caso.simulacao_historico()
+    #caso.ler_ghtotm()
+    caso.ler_out_cmarg()
+    caso.ler_out_cmarg_med()
+    caso.ler_confhd()
+    caso.ler_clast()
+    caso.ler_out_cterm()
+    caso.ler_cadic()
+    caso.ler_out_cdef()
+    caso.ler_out_def()
+    #caso.ler_term()
+    
+    caso.ler_conft()
+    caso.ler_expt()
+    caso.ler_clast()
+    #caso.ler_out_defsin()
+    caso.ler_out_ghtotm()
+    #GTERT e GTOTT
+    #caso.ler_gtert()
+    #caso.ler_term()
+    caso.ler_out_gttot()
+    return caso.cnw
+
+
+def estudo_basico(pasta: Path, nome: str):
+    """Caso sem arquivos de saída."""
+    caso = bnw.BuilderNW(pasta, nome)
+    return caso.cnw
+
+
+##############################################################################
+# %% Testes
+##############################################################################
+@utils.duracao
+def main(pasta, nome_do_caso):
+    """Método para testes dos construtores."""
+    caso = estudo_gsf(pasta, nome_do_caso)
+
+    # pasta = Path(r'D:\Python\Meta-2023\deck_newave_2021_10')
+    # nome_do_caso = 'PMO_outubro'
+    # caso = caso_basico(pasta, nome_do_caso)
+
+    logging.shutdown()
+    return caso
+
+
+# %%
+if __name__ == "__main__":
+    nome_do_caso = 'Teste'
+    pasta = Path(r'C:\Users\E805511\Downloads\NW-CasoBase_LEN_A-4_2022')
+    caso_pmo = main(pasta, nome_do_caso)
+
+    # def para_excel(caso):
+    #     """Para o Excel."""
+    #     cabecalho = caso.datas.cabecalho_datas
+    #     num_sub = caso.numeros['num_submercados']
+    #     num_pats = caso.numeros['num_patamares']
+    #     arq = pasta / 'cmos.xlsx'
+    #     subs = ['SE', 'Sul', 'NE', 'N']
+
+    #     writer = pd.ExcelWriter(arq, engine='xlsxwriter')
+    #     for sub in range(num_sub):
+    #         for pat in range(num_pats):
+    #             df = pd.DataFrame(caso.out_cmarg[pat, sub, :, :])
+    #             df.columns = cabecalho
+    #             nome = subs[sub] + f' pat_{pat+1}'
+    #             df.to_excel(writer, sheet_name=nome)
+    #     writer.save()
+    #     writer.close()
+
+    # para_excel(caso_pmo)
+    
+#==============================================================================
+#%%TESTANDO OS ARQUIVOS
+#==============================================================================
+cterm = caso_pmo.out_cterm
+cad_deficit_custos_e_pats_df = caso_pmo.cad_deficit_custos_e_pats_df
+mercado_energia = caso_pmo.in_carga_df
+carga_usinas_nao_simuladas = caso_pmo.in_carga_ger_pqns_df
+cmarg = caso_pmo.out_cmarg
+caso_pmo.datas.definir('01/2027', '12/2032')
+intercambios = caso_pmo.in_intercambios_df
+dados_info = caso_pmo.informacoes_caso
+dados_num = caso_pmo.numeros
+custo_deficit = caso_pmo.out_cdef
+deficit = caso_pmo.out_def
+#j = caso_pmo.out_defsin
+ghtotm = caso_pmo.out_ghtotm
+#b = caso_pmo.gtert_uma_usina(66)
+gttot = caso_pmo.out_gttot
+#clast = caso_pmo.in_clast_df
+#gtert = caso_pmo.out_gtert
+
+#%% Cálculo INFO E RATEIO DO BT
+
+# caso_pmo.datas.datas_em_meses()
+# gh = caso_pmo.out_ghtotm
+
+# numerador_fh = (gh * cmo_medio).sum()
+# numerador_fh1 = (gh * cmo_medio)
+# cterm = caso_pmo.out_cterm
+
+#==============================================================================
+#%% Cálculo INFO E RATEIO DO BT
+#==============================================================================
+
+"""
+1. Somatório das cargas das pequenas usinas não simuladas.
+2. Dados do mercado de energia
+    -  DataFrame unindo mercado de energia + geração UNS
+3. Configuração termoelétrica (cod. usina, nome e cod. subsistema)
+4. Dados das Térmicas:
+    - arquivo term (capacidade instalada, FCmáximo, TEIF, IP e GTmin)
+    - arquivo _____
+    
+5. Cálculo:
+    Dmáxt: disponibilidade máxima de geração contínua da usina termelétrica, em MW médio;
+    mutate(Pdisp = (capacidaInstalada * (FCMaximo/100) * (1 - (TEIF/100)) * (1 - (IP/100))))
+    
+6. Custo Variável Unitário - CVU Nulo atráves do clast (classes térmicas)
+7. Somatório ghtotm = ghtotmsin (Fazer ghtot posteriormente)
+
+--------------------
+INÍCIO DO CÁLCULO
+
+FH: Fator hídrico (%)
+auxiliares:
+numerador:
+denominador:
+
+
+"""
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# cálculo das ofertas hidráulica e térmica
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#GERAÇÃO SIN
+ghtotsin = ghtotm.sum(axis = 0)
+gttotsin = gttot.sum(axis = 0)
+
+
+# cmarg e cmarg-med mesmo resultado
+#### <codecell>
+cmarg_medio = caso_pmo.out_cmarg_med
+
+
+#CORRETO ---------------------------------
+numerador_fh = ghtotm*cmarg_medio
+
+#TESTANDO---------------------------------
+numerador_fh_teste = ghtotsin*(cmarg_medio.sum(axis=0))
+numerador_fh_teste_2 = (ghtotsin*cmarg_medio).sum(axis=0)
+numerador_fh_teste_teste = (ghtotm*cmarg_medio).sum(axis=0)
+
+a = cmarg_medio.sum(axis=0)
+b = numerador_fh.sum(axis=0)
+c = ghtotsin*cmarg_medio
+
+#--------------------------------------------------------- 
+"""
+Numerador FT é GTERT*cmarg_medio
+"""
+#ERRADO
+#numerador_ft = gttot*cmarg_medio
+
+
+# ---------------------------------------------------------
+"""
+DENOMINADOR FT = FH
+Somatório gh e gt(APENAS GTTOT)
+#Verificar se gttot funciona posteriormente
+#&&&&&&&&&&&&&&&
+"""
+gh_com_gt = (ghtotm+gttot)
+denominador = (ghtotm+gttot)*cmarg_medio
+#--------------------------------------------------------------------------
+# Por que deu errado?
+#--------------------------------------------------------------------------
+"""
+FH: fator hidrelétrico, por unidade - pu;
+"""
+
+fh = numerador_fh.sum()/denominador.sum()
+
+#-------------------------------------------------
+#TESTE - Fabiano - 31/08
+# mercado_energia2 = mercado_energia.sum(axis=0)[:12]
+# dias_mes = [31, 28, 31, 30, 31, 30,31, 31, 30,31, 30, 31]
+# horas_mes = np.array(dias_mes)*24
+# horas_ano = horas_mes.sum()
+# mercado_energia_mwh = mercado_energia2*horas_mes
+#ccritica = mercado_energia.sum()/(12*5)
+
+
+#Somatório das cargas críticas de energia ---------------------------------
+#Pequsi
+#Agrupar por submercado e somar
+pequsi = carga_usinas_nao_simuladas.groupby(['Subsistema']).sum()
+
+ccritica2 = mercado_energia.values.sum()/(12*5)
+
+
+#repetir o processo acima para pequsi
+pequsi2 = pequsi.values.sum()/(12*5)
+
+
+#fazer funçao do código acima
+
+#EH = (fh*mercado_energia - pequsi)
+eh_sem_fh = mercado_energia - pequsi
+n_sim = pequsi.mean(axis=1)
+#Média do mercado de energia e pequsi
+#Equação 3: ET = FT* sum.ccritica - pequsi
+
+
+#=========================================================================
+#%% LEITURA EFGA
+#==============================================================================
+
+"""
+Dados:
+---------------------------------------
+código | usina | energia firme | media
+---------------------------------------
+skiprows = 5
+drop = última linha (total)
+"""
+import pandas as pd
+arq = 'C:/Users/E805511/Documents/modelos_cepel_python-master/EFGA.csv'
+efga = pd.read_csv(arq, 
+                    encoding='utf-8',
+                    engine= 'python',
+                    header=0,
+                    index_col= 'Codigo',
+                    #delimiter= ',',
+                    #delim_whitespace=True,
+                    skiprows=4,
+                    skipinitialspace= True,
+                    #lineterminator=","
+                    quotechar=',',
+                    #doublequote=True,
+                    #Retira as vírgulas
+                    escapechar='"',
+                    #na_values=True,
+                    skipfooter= 1,
+                    )
+
+
+efga = efga.sort_index()
+
+somatorio_energia_firme = efga["Energia Firme"].sum()
+#efga.dtypes
+
+
+#wrong
+#t = efga/ energia_firme
+
+u = efga['Energia Firme']/ somatorio_energia_firme
+
+
+ 
+#==============================================================================
+#%% RATEIO DO BLOCO HIDRELÉTRICO
+#==============================================================================
+
+"""
+As garantias físicas de energia das usinas hidrelétricas são calculadas a partir 
+do rateio da oferta hidráulica - EH entre o conjunto das usinas hidrelétricas da 
+configuração. Este rateio é realizado proporcionalmente à energia firme de cada 
+usina, obtida com auxílio do modelo SUISHI.
+
+A energia firme de uma usina corresponde à geração média nos meses do período 
+crítico e é obtida por simulação a usinas individualizadas do sistema integrado
+puramente hidrelétrico, utilizando séries de vazões históricas e sendo limitada
+ao valor da disponibilidade máxima de geração contínua da usina hidrelétrica - 
+Dmáxh.
+"""
+# Garantia Física Local
+
+
+eh = fh*ccritica2 - pequsi2
+
+gf_local = eh * u
+
+#====================
+#==============================================================================
+#%% FUNÇÃO CVAR DEFICIT
+#==============================================================================
+
+#DEFICIT PARA O SIN NO PATAMAR 001 - (MWmes)
+defsin = deficit.sum(axis = 0)
+v = defsin.sum() /mercado_energia
+
+
+
+#==============================================================================
+#%% FUNÇÃO CVAR CMO
+#==============================================================================
+"""
+Tabela com os valores :
+
+----------------------------
+| subs | meses | media CMO |
+----------------------------
+"""
+
+#Coluna única para o media CMO
+media_cmo = cmarg_medio.mean()
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#           WRONG
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#cmarg_medio.info
+#y = cmarg_medio.median()
+#y = pd.DataFrame(cmarg_medio)
+
+
+#np.info(cmarg_medio)
+media_cvar = cmarg_medio.mean(axis = 1)
+d = media_cvar.mean(axis = 1)
+
+
+#==============================================================================
+#%% DMAXH = Potinst * (1 - TEIF) * (1 - IP)
+#==============================================================================
+
+"""
+Dmáxh = Potinst x (1 - TEIF) x (1 - IP)
+Dmáxh: disponibilidade máxima de geração contínua da usina hidrelétrica,
+ em MW médio;
+Potinst: potência instalada total da usina hidrelétrica, em MW;
+TEIF: taxa equivalente de indisponibilidade forçada, por unidade - pu; e
+IP: indisponibilidade programada, por unidade - pu.
+"""
+
+
+#==============================================================================
+#%% DMAXH = Potinst * (1 - TEIF) * (1 - IP)
+#==============================================================================
+"""
+2. Metodologia de Cálculo da Garantia Física de Energia das Usinas Não Despachadas
+ Centralizadamente
+ 
+ Determinação das Garantias Físicas de Energia das UTE e das Usinas Solares 
+ Heliotérmicas, Inflexíveis e com Custo Variável Unitário - CVU Nulo
+"""
+
+
+horas_ano = 8760
