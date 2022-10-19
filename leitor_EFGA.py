@@ -57,7 +57,6 @@ efga = pd.read_csv(arq,
 
 
 #%%
-import pandas as pd
 somatorio_energia_firme = efga["Energia Firme"].sum()
 #efga.dtypes
 

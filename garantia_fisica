@@ -13,6 +13,7 @@ import utils
 import builder_nw as bnw
 import logging
 import numpy as np
+from refat_efga import Efga
 
 def estudo_gsf(pasta: Path, nome: str, series_hist: bool = False):
     """Caso Sazo."""
